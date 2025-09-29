@@ -7,7 +7,7 @@ Walide 是一个轻量级的差分进化（Differential Evolution, DE）算法�
 目前可通过源码安装：
 ```bash
 # 克隆仓库
-git clone <仓库地址>
+git clone https://github.com/waliwuao/walide.git
 cd walide
 
 # 安装依赖
@@ -186,3 +186,4 @@ print(f"最优适应度: {best_fit:.6f}")
 
 
 [MIT](LICENSE)
+
