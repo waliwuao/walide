@@ -1,3 +1,31 @@
+Metadata-Version: 2.4
+Name: walide
+Version: 0.1.0
+Summary: A differential evolution optimization toolbox
+Author-email: Wally Hao <1276672206@qq.com>
+Project-URL: Homepage, https://github.com/waliwuao/walide
+Project-URL: Repository, https://github.com/waliwuao/walide
+Project-URL: Issues, https://github.com/waliwuao/walide/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: numba>=0.55.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: flake8>=4.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: mypy>=0.990; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: sphinx>=5.0; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=1.0; extra == "docs"
+
 # Walide: 差分进化算法库
 
 Walide 是一个轻量级的差分进化（Differential Evolution, DE）算法实现库，用于解决连续优化问题。该库采用 Numba 加速计算，提供了清晰的模块化设计，方便使用和扩展。
