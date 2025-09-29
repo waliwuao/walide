@@ -1,61 +1,70 @@
 # Walide: 差分进化算法库
 
-Walide 是一个轻量级的差分进化（Differential Evolution, DE）算法实现库，用于解决连续优化问题。该库采用 Numba 加速计算，提供了清晰的模块化设计，方便使用和扩展。
+Walide 是一个基于 Python 实现的差分进化（Differential Evolution, DE）算法库，旨在提供高效、易用的全局优化工具。该库利用 Numba 进行即时编译（JIT），显著提升了计算性能，适用于解决各类连续优化问题。相比于上一个版本，Walide 新增了对种群保存与加载的功能，方便用户在优化过程中中断后继续，并且优化了部分变量名。
+
+## 目录
+
+- [Walide: 差分进化算法库](#walide-差分进化算法库)
+  - [目录](#目录)
+  - [安装说明](#安装说明)
+  - [核心功能](#核心功能)
+  - [快速开始](#快速开始)
+  - [API 文档](#api-文档)
+    - [DE 类](#de-类)
+      - [初始化参数](#初始化参数)
+    - [主要方法](#主要方法)
+      - [optimize()](#optimize)
+      - [reset(\*\*kwargs)](#resetkwargs)
+      - [save(file\_path=None)](#savefile_pathnone)
+      - [load(file\_path)](#loadfile_path)
+  - [算法原理](#算法原理)
+  - [参数说明](#参数说明)
+  - [示例](#示例)
+    - [基本优化示例](#基本优化示例)
+    - [自定义参数示例](#自定义参数示例)
+    - [保存与加载种群](#保存与加载种群)
+  - [性能优化](#性能优化)
+  - [注意事项](#注意事项)
 
 ## 安装说明
 
-目前可通过源码安装：
-```bash
-# 克隆仓库
-git clone https://github.com/waliwuao/walide.git
-cd walide
+Walide 依赖于 `numpy` 和 `numba`，安装前请确保这些依赖已正确安装：
 
-# 安装依赖
+```bash
 pip install numpy numba
+```
 
-# 安装库
-pip install .
-```
-或者直接用pip安装
-```bash
-pip install walide
-```
+然后将 Walide 库的代码放置在项目目录中，即可通过导入使用。
 
 ## 核心功能
 
-Walide 实现了标准差分进化算法的完整流程，包括：
-- 初始种群生成
-- 变异操作
-- 交叉操作
-- 选择操作
-- 适应度评估
-
-算法参数可灵活配置，支持自定义适应度函数，适用于各类连续空间优化问题。
+- 实现高效的差分进化算法，支持自定义优化目标函数
+- 基于 Numba JIT 编译加速，提升计算效率
+- 支持种群的保存与加载，方便中断后继续优化
+- 提供灵活的参数配置，适应不同优化场景
+- 包含完整的边界处理机制，确保解的可行性
 
 ## 快速开始
 
-以下是一个使用 Walide 解决Sphere函数优化问题的示例：
+以下是一个使用 Walide 优化Sphere函数的简单示例：
 
 ```python
 import numpy as np
-from walide.de import DE
+from walide import DE
 
-# 定义适应度函数（Sphere函数）
+# 定义目标函数（Sphere函数）
 def sphere(x):
     return np.sum(x**2)
 
-# 配置并创建DE优化器
+# 创建DE优化器实例
 de = DE(
-    func=sphere,          # 适应度函数
-    dim=30,               # 问题维度
-    popsize=50,           # 种群大小
-    lb=-100,              # 下界
-    up=100,               # 上界
-    f1=0.9,               # 变异因子1
-    f2=0.1,               # 变异因子2
-    cr=0.9,               # 交叉概率
-    maxiter=1000,         # 最大迭代次数
-    log=True              # 是否打印日志
+    func=sphere,    # 目标函数
+    dim=10,         # 问题维度
+    popsize=50,     # 种群大小
+    lb=-100,        # 下界
+    ub=100,         # 上界
+    maxiter=1000,   # 最大迭代次数
+    log=True        # 开启日志
 )
 
 # 执行优化
@@ -66,124 +75,211 @@ print(f"最优位置: {best_position}")
 print(f"最优适应度: {best_fitness}")
 ```
 
-## 详细使用说明
+## API 文档
 
-### 1. 初始化优化器
+### DE 类
 
-`DE` 类是使用的核心，初始化参数说明：
+`DE` 类是 Walide 库的核心，封装了差分进化算法的所有功能。
 
-| 参数 | 类型 | 描述 | 默认值 |
-|------|------|------|--------|
-| func | 函数 | 适应度函数，输入为个体向量，返回标量适应度值 | 必需 |
-| dim | 整数 | 问题维度 | 必需 |
-| popsize | 整数 | 种群大小 | 50 |
-| lb | 数值/数组 | 变量下界，单个值表示所有维度同一下界 | 0 |
-| up | 数值/数组 | 变量上界，单个值表示所有维度同一上界 | 1 |
-| f1 | 浮点数 | 变异因子1 | 0.9 |
-| f2 | 浮点数 | 变异因子2 | 0.1 |
-| cr | 浮点数 | 交叉概率 (0-1) | 0.9 |
-| maxiter | 整数 | 最大迭代次数 | 100 |
-| log | 布尔值 | 是否打印迭代日志 | False |
-| dtype | numpy类型 | 数值类型 | np.float64 |
+#### 初始化参数
 
-### 2. 执行优化
+```python
+DE(func, dim, popsize=50, lb=None, ub=None, f1=0.9, f2=0.1, cr=0.9, maxiter=100, log=False, dtype=np.float64)
+```
 
-调用 `optimize()` 方法启动优化过程：
+- `func`: 目标函数，需要最小化的函数，输入为一维数组，返回浮点值
+- `dim`: 问题维度
+- `popsize`: 种群大小，默认50
+- `lb`: 变量下界，可以是标量（所有维度相同）或数组（各维度不同），默认0
+- `ub`: 变量上界，可以是标量（所有维度相同）或数组（各维度不同），默认1
+- `f1`: 差分权重因子1，默认0.9
+- `f2`: 差分权重因子2，默认0.1
+- `cr`: 交叉概率，默认0.9
+- `maxiter`: 最大迭代次数，默认100
+- `log`: 是否打印日志，默认False
+- `dtype`: 数值类型，默认np.float64
+
+### 主要方法
+
+#### optimize()
+
+执行优化过程，返回最优解和对应的适应度值。
+
 ```python
 best_position, best_fitness = de.optimize()
 ```
 
-- `best_position`: 找到的最优解向量
-- `best_fitness`: 最优解对应的适应度值
+#### reset(**kwargs)
 
-### 3. 重置参数（可选）
+重置优化器参数，可以动态调整各种参数（如维度、种群大小、边界等）。
 
-如果需要调整参数并重新优化，可以使用 `reset()` 方法：
 ```python
-# 调整参数并重置
-de.reset(maxiter=2000, cr=0.8)
-# 再次优化
-new_best_pos, new_best_fit = de.optimize()
+de.reset(dim=20, popsize=100, maxiter=2000)
 ```
 
-`reset()` 支持调整所有初始化时的参数，并且会智能处理种群的更新。
+#### save(file_path=None)
+
+保存当前种群到CSV文件，默认路径为`population.csv`。
+
+```python
+de.save("current_population.csv")
+```
+
+#### load(file_path)
+
+从CSV文件加载种群。
+
+```python
+de.load("saved_population.csv")
+```
 
 ## 算法原理
 
-差分进化算法是一种基于群体的随机优化方法，主要步骤包括：
+差分进化算法是一种基于群体的随机优化方法，主要包括以下步骤：
 
-1. **初始化**：随机生成初始种群
-2. **变异**：通过差分策略生成变异向量
-   ```
-   变异向量 = r1 + f1*(r2 - r3) + f2*(best - r1)
-   其中r1, r2, r3是随机选择的不同个体，best是当前最优个体
-   ```
-3. **交叉**：将目标向量与变异向量进行交叉操作生成试验向量
-4. **选择**：比较试验向量和目标向量的适应度，保留较优者
+1.** 初始化 **：随机生成初始种群，确保个体在给定的边界范围内
+2.** 变异 **：通过差分策略生成变异向量
+   - 变异公式：`mutant = r1 + f1*(r2 - r3) + f2*(best - r1)`
+   - 其中r1, r2, r3是随机选择的不同个体，best是当前最优个体
+3.** 交叉 **：将变异向量与目标向量进行交叉操作，生成试验向量
+4.** 选择 **：比较试验向量和目标向量的适应度，保留较优个体
+5.** 迭代 **：重复步骤2-4，直到达到最大迭代次数
 
-## 模块说明
+## 参数说明
 
-Walide 采用模块化设计，各组件功能清晰：
+-** 种群大小 (popsize)**: 较大的种群通常能探索更多解空间，但计算成本更高
+-** 差分权重 (f1, f2)**: 控制变异向量的扰动程度，通常在[0, 2]范围内
+-** 交叉概率 (cr)**: 控制从变异向量继承基因的概率，通常在[0, 1]范围内
+-** 最大迭代次数 (maxiter)**: 算法停止条件，应根据问题复杂度调整
 
-- `generator.py`: 种群生成模块，负责创建初始种群
-- `mutate.py`: 变异模块，实现变异操作
-- `crossover.py`: 交叉模块，实现交叉操作并处理边界约束
-- `selection.py`: 选择模块，基于适应度选择下一代个体
-- `fitness.py`: 适应度评估模块，管理适应度函数
-- `de.py`: 算法主类，协调各模块完成优化过程
+参数选择建议：
+- 对于简单问题：popsize=30-50，f1=0.8-0.9，f2=0.1-0.2，cr=0.8-0.9
+- 对于复杂问题：popsize=100-200，f1=0.5-0.8，f2=0.2-0.3，cr=0.5-0.8
 
-所有计算密集型函数均使用 Numba 进行了即时编译（JIT），以提高运行效率。
+## 示例
 
-## 注意事项
+### 基本优化示例
 
-1. 适应度函数应返回标量值，且越小表示解越优（最小化问题）
-2. 对于最大化问题，可在适应度函数中返回负值
-3. 边界参数 `lb` 和 `up` 可以是单个值（所有维度相同）或与维度长度相同的数组（各维度不同）
-4. 算法性能受参数 `f1`, `f2` 和 `cr` 影响，可根据具体问题调整
-
-## 示例：多维度不同边界的优化
+优化Rosenbrock函数：
 
 ```python
 import numpy as np
-from walide.de import DE
+from walide import DE
 
-# 定义适应度函数
-def ackley(x):
-    a = 20
-    b = 0.2
-    c = 2 * np.pi
-    sum1 = np.sum(x**2)
-    sum2 = np.sum(np.cos(c * x))
-    n = len(x)
-    term1 = -a * np.exp(-b * np.sqrt(sum1 / n))
-    term2 = -np.exp(sum2 / n)
-    return term1 + term2 + a + np.exp(1)
-
-# 定义各维度不同的边界
-lb = [-32.768] * 10  # 10维问题，所有维度下界都是-32.768
-up = [32.768] * 10   # 10维问题，所有维度上界都是32.768
+def rosenbrock(x):
+    return sum(100.0*(x[1:]-x[:-1]**2.0)**2.0 + (1-x[:-1])**2.0)
 
 # 创建优化器
 de = DE(
-    func=ackley,
-    dim=10,
+    func=rosenbrock,
+    dim=30,
     popsize=100,
-    lb=lb,
-    up=up,
-    f1=0.8,
-    f2=0.2,
-    cr=0.9,
+    lb=-5,
+    ub=10,
     maxiter=2000,
     log=True
 )
 
-# 优化
+# 运行优化
 best_pos, best_fit = de.optimize()
-print(f"最优适应度: {best_fit:.6f}")
+print(f"优化结果: 最优适应度 = {best_fit:.6f}")
 ```
 
-## 许可证
+### 自定义参数示例
 
+使用自定义参数优化不同维度的问题：
 
-[MIT](LICENSE)
+```python
+from walide import DE
+import numpy as np
 
+def ackley(x):
+    n = len(x)
+    return -20 * np.exp(-0.2 * np.sqrt(np.sum(x**2) / n)) - np.exp(np.sum(np.cos(2 * np.pi * x)) / n) + 20 + np.e
+
+# 初始优化器
+de = DE(
+    func=ackley,
+    dim=10,
+    popsize=50,
+    lb=-32.768,
+    ub=32.768,
+    f1=0.8,
+    f2=0.2,
+    cr=0.7,
+    maxiter=1000,
+    log=True
+)
+
+# 第一次优化
+best_pos, best_fit = de.optimize()
+print(f"10维优化结果: {best_fit:.6f}")
+
+# 调整参数并继续优化
+de.reset(dim=20, maxiter=1000)
+best_pos, best_fit = de.optimize()
+print(f"20维优化结果: {best_fit:.6f}")
+```
+
+### 保存与加载种群
+
+中断后继续优化：
+
+```python
+from walide import DE
+import numpy as np
+
+def griewank(x):
+    n = len(x)
+    return 1 + sum(x**2 / 4000) - np.prod(np.cos(x / np.sqrt(np.arange(1, n+1))))
+
+# 创建优化器
+de = DE(
+    func=griewank,
+    dim=15,
+    popsize=70,
+    lb=-600,
+    ub=600,
+    maxiter=500,
+    log=True
+)
+
+# 运行部分优化
+de.optimize()
+print(f"部分优化结果: {de.best_fitness:.6f}")
+
+# 保存当前种群
+de.save("griewank_pop.csv")
+
+# 加载种群并继续优化
+new_de = DE(
+    func=griewank,
+    dim=15,
+    maxiter=500,
+    log=True
+)
+new_de.load("griewank_pop.csv")
+
+# 继续优化
+new_de.optimize()
+print(f"最终优化结果: {new_de.best_fitness:.6f}")
+```
+
+## 性能优化
+
+1.** 目标函数优化 **：目标函数是计算瓶颈，应尽量使用NumPy向量化操作
+2.** Numba加速 **：库中已使用Numba JIT编译关键函数，首次运行会有编译延迟，后续运行速度显著提升
+3.** 种群大小调整 **：根据问题复杂度调整种群大小，避免不必要的计算
+4.** 精度设置 **：对于不需要高精度的问题，可以使用`dtype=np.float32`减少计算量
+
+## 注意事项
+
+1.** 目标函数要求 **：目标函数应接受NumPy数组作为输入，并返回单个数值
+2.** 边界处理 **：算法会自动处理超出边界的解，将其截断到边界上
+3.** 随机性 **：算法包含随机过程，相同参数多次运行可能得到不同结果
+4.** 日志输出 **：开启日志(`log=True`)会打印每100代的信息，便于监控优化过程
+5.** 初始种群 **：若未加载种群，算法会自动生成符合边界条件的初始种群
+
+---
+
+Walide 库提供了一个灵活高效的差分进化算法实现，适用于解决各类连续优化问题。通过调整算法参数，它可以适应不同复杂度的优化任务，帮助用户快速找到问题的近似最优解。

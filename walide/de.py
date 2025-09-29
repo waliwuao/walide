@@ -7,7 +7,7 @@ from .selection import Selection, compute_fitness
 from .fitness import set_fitness_function
 
 class DE:
-    def __init__(self, func, dim, popsize=50, lb=None, up=None, 
+    def __init__(self, func, dim, popsize=50, lb=None, ub=None, 
                  f1=0.9, f2=0.1, cr=0.9, maxiter=100, log=False, dtype=np.float64):
         self.func = func
         self.dim = dim
@@ -23,10 +23,10 @@ class DE:
         else:
             self.lower_bound = np.array(lb, dtype=dtype) if np.size(lb) > 1 else np.full(dim, lb, dtype=dtype)
             
-        if up is None:
+        if ub is None:
             self.upper_bound = np.ones(dim, dtype=dtype)
         else:
-            self.upper_bound = np.array(up, dtype=dtype) if np.size(up) > 1 else np.full(dim, up, dtype=dtype)
+            self.upper_bound = np.array(ub, dtype=dtype) if np.size(ub) > 1 else np.full(dim, ub, dtype=dtype)
         
         self.generator = Generator(
             dimension=dim, 
@@ -208,3 +208,36 @@ class DE:
                 print(f"{gen} {self.best_fitness:.12f} {self.f1:.2f} {self.f2:.2f} {self.cr:.2f}")
         
         return self.best_position, self.best_fitness
+
+    def save(self, file_path=None):
+        if self.pop is not None:
+            default_path = 'population.csv'
+            path = default_path if file_path is None else file_path
+            np.savetxt(path, self.pop, delimiter=',')
+    def load(self, file_path):
+        try:
+            self.pop = np.loadtxt(file_path, delimiter=',', dtype=self.dtype)
+            self.popsize = self.pop.shape[0]
+            self.dim = self.pop.shape[1]
+            self.fitness = compute_fitness(self.pop, self.popsize)
+            current_best_idx = np.argmin(self.fitness)
+            current_best_fitness = self.fitness[current_best_idx]
+            if current_best_fitness < self.best_fitness:
+                self.best_fitness = current_best_fitness
+                self.best_position = self.pop[current_best_idx].copy()
+            if self.best_cost:
+                self.best_cost[-1] = self.best_fitness
+            else:
+                self.best_cost.append(self.best_fitness)
+            self.mutate = Mutate(
+                pop_size=self.popsize,
+                dimensions=self.dim,
+                lower_bound=self.lower_bound,
+                upper_bound=self.upper_bound,
+                f1=self.f1,
+                f2=self.f2,
+                best=self.best_position,
+                dtype=self.dtype
+            )
+        except Exception as e:
+            print(f"{e}")

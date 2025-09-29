@@ -1,3 +1,4 @@
+LICENSE.txt
 README.md
 pyproject.toml
 walide/__init__.py
