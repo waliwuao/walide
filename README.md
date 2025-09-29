@@ -16,6 +16,10 @@ pip install numpy numba
 # 安装库
 pip install .
 ```
+或者直接用pip安装
+```bash
+pip install walide
+```
 
 ## 核心功能
 
@@ -179,5 +183,6 @@ print(f"最优适应度: {best_fit:.6f}")
 ```
 
 ## 许可证
+
 
 [MIT](LICENSE)
