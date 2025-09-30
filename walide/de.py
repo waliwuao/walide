@@ -7,11 +7,12 @@ from .selection import Selection, compute_fitness
 from .fitness import set_fitness_function
 
 class DE:
-    def __init__(self, func, dim, popsize=50, lb=None, ub=None, 
-                 f1=0.9, f2=0.1, cr=0.9, maxiter=100, log=False, dtype=np.float64):
+    def __init__(self, func, dim, size=50, lb=None, ub=None, 
+                 f1=0.9, f2=0.1, cr=0.5, maxiter=1000, log=True, 
+                 diversity_threshold=0.1, reset_ratio=0.3, dtype=np.float64):
         self.func = func
         self.dim = dim
-        self.popsize = popsize
+        self.popsize = size
         self.maxiter = maxiter
         self.logging = log
         self.pop = None
@@ -30,14 +31,14 @@ class DE:
         
         self.generator = Generator(
             dimension=dim, 
-            pop_size=popsize,
+            pop_size=size,
             lower_bound=self.lower_bound, 
             upper_bound=self.upper_bound,
             dtype=dtype
         )
         self.mutate = None
         self.crossover = Crossover(
-            pop_size=popsize, 
+            pop_size=size, 
             dimensions=dim,
             lower_bound=self.lower_bound, 
             upper_bound=self.upper_bound, 
@@ -45,14 +46,20 @@ class DE:
             dtype=dtype
         )
         self.selection = Selection(
-            pop_size=popsize, 
+            pop_size=size, 
             dimensions=dim,
+            lower_bound=self.lower_bound,  
+            upper_bound=self.upper_bound, 
+            diversity_threshold=diversity_threshold,
+            reset_ratio=reset_ratio, 
             dtype=dtype
         )
         
         self.f1 = f1
         self.f2 = f2
         self.cr = cr
+        self.diversity_threshold = diversity_threshold
+        self.reset_ratio = reset_ratio
         
         self.best_cost = []
         self.best_position = None
@@ -81,7 +88,7 @@ class DE:
         if 'upper_bound' in kwargs:
             self.upper_bound = np.array(kwargs['upper_bound'], dtype=self.dtype) if np.size(kwargs['upper_bound']) > 1 else np.full(self.dim, kwargs['upper_bound'], dtype=self.dtype)
         
-        for param in ['f1', 'f2', 'cr', 'maxiter', 'dtype']:
+        for param in ['f1', 'f2', 'cr', 'maxiter', 'dtype', 'diversity_threshold', 'reset_ratio']:
             if param in kwargs:
                 setattr(self, param, kwargs[param])
         
@@ -105,6 +112,10 @@ class DE:
         self.selection = Selection(
             pop_size=self.popsize,
             dimensions=self.dim,
+            lower_bound=self.lower_bound,
+            upper_bound=self.upper_bound,
+            diversity_threshold=self.diversity_threshold,
+            reset_ratio=self.reset_ratio,
             dtype=self.dtype
         )
         
@@ -150,7 +161,6 @@ class DE:
                         self.pop[i, j] = self.upper_bound[j]
             
             self.fitness = compute_fitness(self.pop, self.popsize)
-            
             current_best_idx = np.argmin(self.fitness)
             current_best_fitness = self.fitness[current_best_idx]
             if current_best_fitness < self.best_fitness:
@@ -188,7 +198,8 @@ class DE:
         for gen in range(1, self.maxiter+1):
             mutant = self.mutate.mutate(population)
             trial = self.crossover.crossover(population, mutant)
-            population = self.selection.select(population, trial)
+            population = self.selection.select(population, trial) 
+            
             fitness = compute_fitness(population, self.popsize)
             current_best_idx = np.argmin(fitness)
             current_best_fitness = fitness[current_best_idx]
@@ -214,7 +225,8 @@ class DE:
             default_path = 'population.csv'
             path = default_path if file_path is None else file_path
             np.savetxt(path, self.pop, delimiter=',')
-    def load(self, file_path):
+
+    def load(self, file_path='population.csv'):
         try:
             self.pop = np.loadtxt(file_path, delimiter=',', dtype=self.dtype)
             self.popsize = self.pop.shape[0]
